@@ -33,7 +33,7 @@
               label-col (get col-dict label-str)]
           (.set m (int idx) (int label-col) (double 1))
           (doseq [[p-idx pixel-str] (map list (range) (drop 1 row))
-                  :when (< 55 (Long/parseLong pixel-str))
+                  :when (< 128 (Long/parseLong pixel-str))
                   :let [pixel-col (get col-dict (str "PIXEL_" p-idx))]]
             (.set m (int idx) (int pixel-col) (double 1))))))
     (prn "m rowSize: " (.numRows m) " colSize: " (.numCols m))
@@ -109,7 +109,7 @@
                                                es (map (fn [^Vector$Element e]
                                                          [(. e get) (. e index)])
                                                        (iterator-seq (.. row iterateNonZero)))
-                                               indicators (take-while (comp (partial < 3) first)  (sort-by first > es))]
+                                               indicators (take-while (comp (partial < 5) first)  (sort-by first > es))]
                                            [(get inv-col-dict i)  (map (comp (partial get inv-col-dict) second) indicators)])))]
        (prn "Overlap in indicators:")
        (->> (for [[l mapping] indicator-mapping
@@ -119,7 +119,7 @@
                       {ol [(count mapping) (count (filter mapping-set om))]})))
             (pprint/print-table (into [:label] (map (partial str "LABEL_") (range 10)))))
        (doseq [[label pixels] indicator-mapping]
-         (println label (string/join " " pixels))))
+         (println label (string/join " " (sort pixels)))))
      ))
   
   (prn "Done"))
