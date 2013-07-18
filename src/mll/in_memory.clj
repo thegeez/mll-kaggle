@@ -11,9 +11,10 @@
             DataInputStream FileInputStream InputStream]))
 
 
-(def n-cols (+ (* 28 28) 10)) ;; pixels + labels
+(def n-cols (+ (* 28 28) (* 28 28) 10)) ;; pixels_on + pixels_off + labels
 
-(def col-dict (zipmap (concat (map (partial str "PIXEL_") (range (* 28 28)))
+(def col-dict (zipmap (concat (map (partial str "PIXEL_ON_") (range (* 28 28)))
+                              (map (partial str "PIXEL_OFF_") (range (* 28 28)))
                               (map (partial str "LABEL_") (range 10)))
                       (range)))
 
@@ -33,9 +34,12 @@
               label-col (get col-dict label-str)]
           (.set m (int idx) (int label-col) (double 1))
           (doseq [[p-idx pixel-str] (map list (range) (drop 1 row))
-                  :when (< 128 (Long/parseLong pixel-str))
-                  :let [pixel-col (get col-dict (str "PIXEL_" p-idx))]]
-            (.set m (int idx) (int pixel-col) (double 1))))))
+                  :let [pixel (Long/parseLong pixel-str)]]
+            (when-let [pixel-col (cond
+                                  (< 128 pixel) (get col-dict (str "PIXEL_ON_" p-idx))
+                                  (> 10 pixel) (get col-dict (str "PIXEL_OFF_" p-idx))
+                                  :else nil)]
+              (.set m (int idx) (int pixel-col) (double 1)))))))
     (prn "m rowSize: " (.numRows m) " colSize: " (.numCols m))
     m))
 
@@ -104,12 +108,12 @@
                score (LogLikelihood/rootLogLikelihoodRatio k11 k12 k21 k22)]
            (.set cooccurrence (int (. row index)) (int e-idx) score))))
      (prn "Filtering, only label rows")
-     (let [indicator-mapping  (into {} (for [i (map (partial + (* 28 28)) (range 10))]
+     (let [indicator-mapping  (into {} (for [i (map (partial + (* 28 28) (* 28 28)) (range 10))]
                                          (let [row (. cooccurrence (viewRow (int i)))
                                                es (map (fn [^Vector$Element e]
                                                          [(. e get) (. e index)])
                                                        (iterator-seq (.. row iterateNonZero)))
-                                               indicators (take-while (comp (partial < 5) first)  (sort-by first > es))]
+                                               indicators (take-while (comp (partial < 4) first)  (sort-by first > es))]
                                            [(get inv-col-dict i)  (map (comp (partial get inv-col-dict) second) indicators)])))]
        (prn "Overlap in indicators:")
        (->> (for [[l mapping] indicator-mapping
